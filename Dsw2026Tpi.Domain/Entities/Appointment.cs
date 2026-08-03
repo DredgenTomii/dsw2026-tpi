@@ -5,8 +5,8 @@ public class Appointment : EntityBase
     public Guid AvailabilitySlotId { get; init; }
     public AvailabilitySlot? AvailabilitySlot { get; private set; }
 
-    public Guid PacienteId { get; init; }
-    public Paciente? Paciente { get; private set; }
+    public Guid PatientId { get; init; }
+    public Patient? Patient{ get; private set; }
 
     public string Reason { get; init; }
     public AppointmentStatus Status { get; private set; }
@@ -21,10 +21,10 @@ public class Appointment : EntityBase
 #pragma warning restore CS8618
     #endregion
 
-    public Appointment(Guid availabilitySlotId, Guid pacienteId, string reason, Guid? id = null) : base(id)
+    public Appointment(Guid availabilitySlotId, Guid patientId, string reason, Guid? id = null) : base(id)
     {
         AvailabilitySlotId = availabilitySlotId;
-        PacienteId = pacienteId;
+        PatientId = patientId;
         Reason = reason;
         Status = AppointmentStatus.Booked;
     }
