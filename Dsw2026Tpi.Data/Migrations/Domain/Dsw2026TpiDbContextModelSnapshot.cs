@@ -55,7 +55,7 @@ namespace Dsw2026Tpi.Data.Migrations.Domain
                     b.ToTable("Doctors", (string)null);
                 });
 
-            modelBuilder.Entity("Dsw2026Tpi.Domain.Entities.Paciente", b =>
+            modelBuilder.Entity("Dsw2026Tpi.Domain.Entities.Patient", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -71,10 +71,10 @@ namespace Dsw2026Tpi.Data.Migrations.Domain
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Nombre")
+                    b.Property<string>("Name")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Telefono")
+                    b.Property<string>("Phone")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("UpdatedAt")
@@ -85,7 +85,7 @@ namespace Dsw2026Tpi.Data.Migrations.Domain
                     b.HasIndex("Dni")
                         .IsUnique();
 
-                    b.ToTable("Pacientes", (string)null);
+                    b.ToTable("Patients", (string)null);
                 });
 
             modelBuilder.Entity("Dsw2026Tpi.Domain.Entities.Speciality", b =>
