@@ -6,26 +6,26 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Dsw2026Tpi.Data.Migrations.Domain
 {
     /// <inheritdoc />
-    public partial class AddPacientes : Migration
+    public partial class AddPatients : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Pacientes",
+                name: "Patients",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Dni = table.Column<long>(type: "bigint", nullable: false),
                     Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Nombre = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    Telefono = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Name = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Phone = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Pacientes", x => x.Id);
+                    table.PrimaryKey("PK_Patients", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -71,8 +71,8 @@ namespace Dsw2026Tpi.Data.Migrations.Domain
                 column: "SpecialityId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Pacientes_Dni",
-                table: "Pacientes",
+                name: "IX_Patients_Dni",
+                table: "Patients",
                 column: "Dni",
                 unique: true);
         }
@@ -84,7 +84,7 @@ namespace Dsw2026Tpi.Data.Migrations.Domain
                 name: "Doctors");
 
             migrationBuilder.DropTable(
-                name: "Pacientes");
+                name: "Patients");
 
             migrationBuilder.DropTable(
                 name: "Specialities");

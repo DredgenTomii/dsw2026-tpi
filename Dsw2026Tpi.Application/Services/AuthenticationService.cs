@@ -63,25 +63,25 @@ public class AuthenticationService : IAuthenticationService
         if (!request.Email.IsEmailValid() || !request.Dni.IsDniValid())
             throw new ValidationException(ErrorCodes.PATIENT_LOGIN_INVALID, nameof(ErrorCodes.PATIENT_LOGIN_INVALID));
 
-        var paciente = await _persistence.First<Paciente>(p => p.Dni == request.Dni);
+        var patient = await _persistence.First<Patient>(p => p.Dni == request.Dni);
 
-        if (paciente is null)
+        if (patient is null)
         {
-            paciente = new Paciente(request.Dni, request.Email)
+            patient = new Patient(request.Dni, request.Email)
             {
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow
             };
-            await _persistence.Add(paciente);
+            await _persistence.Add(patient);
             _logger.LogInformation("Paciente autoregistrado: {Dni}", request.Dni);
         }
-        else if (!string.Equals(paciente.Email, request.Email, StringComparison.OrdinalIgnoreCase))
+        else if (!string.Equals(patient.Email, request.Email, StringComparison.OrdinalIgnoreCase))
         {
-            _logger.LogError("Intento de login fallido para paciente: {Dni}", request.Dni);
+            _logger.LogError("Intento de login fallido para patient: {Dni}", request.Dni);
             throw new AuthenticationException();
         }
 
-        var token = _jwtService.GenerateToken(paciente.Email, Roles.Patient);
+        var token = _jwtService.GenerateToken(patient.Email, Roles.Patient);
 
         return new LoginPatientModel.Response(token, Roles.Patient);
     }
