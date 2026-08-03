@@ -117,6 +117,24 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
+	<data name="APPOINTMENT_CONFLICT" xml:space="preserve">
+    <value>El turno ya fue reservado</value>
+  </data>
+	<data name="APPOINTMENT_PAST_DATE" xml:space="preserve">
+    <value>No se pueden reservar turnos en fechas o en horarios pasados</value>
+  </data>
+	<data name="APPOINTMENT_DOCTOR_MISMATCH" xml:space="preserve">
+    <value>El turno seleccionado no pertenece al médico indicado</value>
+  </data>
+	<data name="APPOINTMENT_INVALID_REASON" xml:space="preserve">
+    <value>El motivo de consulta debe tener al menos 5 caracteres</value>
+  </data>
+	<data name="APPOINTMENT_INVALID_DNI" xml:space="preserve">
+    <value>El DNI debe tener entre 7 y 10 dígitos</value>
+  </data>
+	<data name="APPOINTMENT_NOT_CANCELLABLE" xml:space="preserve">
+    <value>Solo se puede cancelar un turno en estado reservado</value>
+  </data>
   <data name="AUTHENTICATION_FAILED" xml:space="preserve">
     <value>Usuario o contraseña incorrectos</value>
   </data>

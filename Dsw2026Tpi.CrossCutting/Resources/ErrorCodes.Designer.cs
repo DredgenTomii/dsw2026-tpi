@@ -61,6 +61,60 @@ namespace Dsw2026Tpi.CrossCutting.Resources {
         }
         
         /// <summary>
+        ///   Busca una cadena traducida similar a El turno ya fue reservado.
+        /// </summary>
+        public static string APPOINTMENT_CONFLICT {
+            get {
+                return ResourceManager.GetString("APPOINTMENT_CONFLICT", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Busca una cadena traducida similar a El turno seleccionado no pertenece al médico indicado.
+        /// </summary>
+        public static string APPOINTMENT_DOCTOR_MISMATCH {
+            get {
+                return ResourceManager.GetString("APPOINTMENT_DOCTOR_MISMATCH", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Busca una cadena traducida similar a El DNI debe tener entre 7 y 10 dígitos.
+        /// </summary>
+        public static string APPOINTMENT_INVALID_DNI {
+            get {
+                return ResourceManager.GetString("APPOINTMENT_INVALID_DNI", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Busca una cadena traducida similar a El motivo de consulta debe tener al menos 5 caracteres.
+        /// </summary>
+        public static string APPOINTMENT_INVALID_REASON {
+            get {
+                return ResourceManager.GetString("APPOINTMENT_INVALID_REASON", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Busca una cadena traducida similar a Solo se puede cancelar un turno en estado reservado.
+        /// </summary>
+        public static string APPOINTMENT_NOT_CANCELLABLE {
+            get {
+                return ResourceManager.GetString("APPOINTMENT_NOT_CANCELLABLE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Busca una cadena traducida similar a No se pueden reservar turnos en fechas o en horarios pasados.
+        /// </summary>
+        public static string APPOINTMENT_PAST_DATE {
+            get {
+                return ResourceManager.GetString("APPOINTMENT_PAST_DATE", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Busca una cadena traducida similar a Usuario o contraseña incorrectos.
         /// </summary>
         public static string AUTHENTICATION_FAILED {
