@@ -17,7 +17,6 @@ public static class DependencyInjectionConfigurationExtensions
         services.AddScoped<ISignInService, SignInService>();
         services.AddSingleton<JwtService>();
 
-        // Nuevo (Persona 3: Médicos + Disponibilidades)
         services.AddScoped<IAvailabilityService, AvailabilityService>();
         services.AddSingleton<IHolidayProvider, HolidayProvider>();
 
