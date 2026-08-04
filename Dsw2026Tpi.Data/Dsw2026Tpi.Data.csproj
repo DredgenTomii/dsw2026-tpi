@@ -23,19 +23,13 @@
     <None Update="Sources\roles.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+	<None Update="Sources\holidays.json">
+	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	</None>
   </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Migrations\Domain\" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="Sources\roles.json">
-	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Sources\holidays.json">
-	  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	</None>
   </ItemGroup>
 	
 </Project>
