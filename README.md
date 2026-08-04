@@ -140,22 +140,22 @@ ________________________________________
 ### Estructura del proyecto
 
 Dsw2026Tpi
-│
-├── Dsw2026Tpi.Api
-│   ├── Controllers
-│   ├── Configurations
-│   ├── Middlewares
-│   └── Program.cs
-│
-├── Dsw2026Tpi.Application
-│   ├── Dtos
-│   ├── Interfaces
-│   └── Services
-│
-├── Dsw2026Tpi.Domain
-│   └── Entidades y reglas de dominio
-│
-└── Dsw2026Tpi.Data
-    ├── Persistencia
-    ├── Entity Framework Core
-    └── Migraciones
+
+    Dsw2026Tpi.Api
+        Controllers
+        Configurations
+        Middlewares
+        Program.cs
+
+    Dsw2026Tpi.Application
+        Dtos
+        Interfaces
+        Services
+
+    Dsw2026Tpi.Domain
+        Entidades y reglas de dominio
+
+    Dsw2026Tpi.Data
+        Persistencia
+        Entity Framework Core
+        Migraciones
