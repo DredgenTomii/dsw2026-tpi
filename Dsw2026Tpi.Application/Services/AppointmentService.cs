@@ -118,9 +118,16 @@ public class AppointmentService : IAppointmentService
         }
     }
 
-    public Task<IEnumerable<AppointmentModel.Response>> GetByDate(DateOnly date)
+    public async Task<IEnumerable<AppointmentModel.Response>> GetByDate(DateOnly date)
     {
-        throw new NotImplementedException();
+        var appointments = await _persistence.GetFiltered<Appointment>(
+            a => a.AvailabilitySlot!.Date == date,
+            "AvailabilitySlot.Doctor.Speciality", "Patient") ?? [];
+
+        return appointments
+            .OrderBy(a => a.AvailabilitySlot!.StartTime)
+            .Select(a => MapToResponse(a, a.AvailabilitySlot!, a.Patient!))
+            .ToList();
     }
 
     public Task<Pagination<AppointmentModel.Response>> Search(
