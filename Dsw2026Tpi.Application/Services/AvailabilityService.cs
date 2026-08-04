@@ -28,7 +28,8 @@ public class AvailabilityService : IAvailabilityService
 
     public async Task<IEnumerable<AvailabilityModel.RuleResponse>> GetByDoctor(Guid doctorId)
     {
-        _ = await _persistence.GetById<Doctor>(doctorId) ?? throw new EntityNotFoundException(nameof(Doctor));
+        _ = await _persistence.GetById<Doctor>(doctorId)
+            ?? throw new EntityNotFoundException(nameof(Doctor));
 
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -63,12 +64,16 @@ public class AvailabilityService : IAvailabilityService
         ValidateBlocksOf30(rules);   // RN02: bloques de 30 min
         ValidateNoOverlaps(rules);   // RN01: disponibilidad médica sin solapamientos
 
-        await HandleExistingMonth(request.DoctorId, year, month, isOverwrite);
+        var bookedSlots = await HandleExistingMonth(request.DoctorId, year, month, isOverwrite);
 
         var (rangeStart, lastOfMonth) = ResolveGenerationRange(year, month);
         var holidays = await _holidayProvider.GetHolidays(year, month);
 
         var createdSlots = new List<AvailabilitySlot>();
+
+        var bookedSlotKeys = bookedSlots
+            .Select(s => (s.Date, s.StartTime, s.EndTime))
+            .ToHashSet();
 
         foreach (var dayRule in rules)
         {
@@ -83,12 +88,17 @@ public class AvailabilityService : IAvailabilityService
 
                 foreach (var (start, end) in SplitInSlotsOf30(dayRule.StartTime, dayRule.EndTime))
                 {
+                    if (bookedSlotKeys.Contains((date, start, end)))
+                        continue;
+
                     var slot = new AvailabilitySlot(request.DoctorId, rule.Id, date, start, end);
                     await _persistence.Add(slot);
                     createdSlots.Add(slot);
                 }
             }
         }
+
+        createdSlots.AddRange(bookedSlots);
 
         return new AvailabilityModel.Response(
             request.DoctorId,
@@ -99,32 +109,45 @@ public class AvailabilityService : IAvailabilityService
 
     /// <summary>
     /// Si ya hay reglas cargadas para ese médico/mes: en POST es conflicto (usar PUT),
-    /// en PUT se borran (cascada borra los slots) siempre que ninguno esté reservado.
+    /// en PUT se borran las reglas/slots NO reservados (cascada) y se devuelven los
+    /// slots reservados para no duplicarlos al regenerar.
     /// </summary>
-    private async Task HandleExistingMonth(Guid doctorId, int year, int month, bool isOverwrite)
+    private async Task<List<AvailabilitySlot>> HandleExistingMonth(Guid doctorId, int year, int month, bool isOverwrite)
     {
         var existingRules = (await _persistence.GetFiltered<AvailabilityRule>(r =>
             r.DoctorId == doctorId && r.Year == year && r.Month == month))?.ToList() ?? [];
 
-        if (existingRules.Count == 0) return;
+        if (existingRules.Count == 0)
+            return [];
 
         if (!isOverwrite)
             throw new ConflictException("AVAILABILITY_ALREADY_EXISTS",
                 "Ya existe una configuración de disponibilidad para ese mes. Utilice PUT para reemplazarla.");
 
         var existingRuleIds = existingRules.Select(r => r.Id).ToHashSet();
-        var existingSlots = await _persistence.GetFiltered<AvailabilitySlot>(s =>
-            existingRuleIds.Contains(s.AvailabilityRuleId)) ?? [];
 
-        if (existingSlots.Any(s => s.IsBooked))
-            throw new ConflictException("AVAILABILITY_HAS_BOOKED_SLOTS",
-                "No se puede sobreescribir el mes: hay turnos reservados. Cancele esos turnos primero.");
+        var existingSlots = (await _persistence.GetFiltered<AvailabilitySlot>(s =>
+            existingRuleIds.Contains(s.AvailabilityRuleId)))?.ToList() ?? [];
+
+        var bookedSlots = existingSlots.Where(s => s.IsBooked).ToList();
+
+        foreach (var slot in existingSlots.Where(s => !s.IsBooked))
+        {
+            await _persistence.Delete(slot);
+        }
+
+        var bookedRuleIds = bookedSlots.Select(s => s.AvailabilityRuleId).ToHashSet();
 
         foreach (var rule in existingRules)
         {
-            // OnDelete(Cascade) en AvailabilitySlotConfiguration borra los slots asociados.
-            await _persistence.Delete(rule);
+            if (!bookedRuleIds.Contains(rule.Id))
+            {
+                // OnDelete(Cascade) en AvailabilitySlotConfiguration borra los slots asociados.
+                await _persistence.Delete(rule);
+            }
         }
+
+        return bookedSlots;
     }
 
     private static (DateOnly RangeStart, DateOnly LastOfMonth) ResolveGenerationRange(int year, int month)
