@@ -8,16 +8,19 @@ using Dsw2026Tpi.CrossCutting.Resources;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace Dsw2026Tpi.Application.Services;
 
 public class AppointmentService : IAppointmentService
 {
     private readonly IPersistence _persistence;
+    private readonly ILogger<AppointmentService> _logger;
 
-    public AppointmentService(IPersistence persistence)
+    public AppointmentService(IPersistence persistence, ILogger<AppointmentService> logger)
     {
         _persistence = persistence;
+        _logger = logger;
     }
 
     public async Task<AppointmentModel.Response> Create(AppointmentModel.Request request)
@@ -58,12 +61,17 @@ public class AppointmentService : IAppointmentService
         }
         catch (DbUpdateException)
         {
+            _logger.LogWarning("Conflicto de concurrencia al reservar el slot {SlotId}", slot.Id);
             throw new ConflictException(ErrorCodes.APPOINTMENT_CONFLICT,
                 nameof(ErrorCodes.APPOINTMENT_CONFLICT));
         }
 
         slot.MarkBooked();
         await _persistence.Update(slot);
+
+        _logger.LogInformation(
+            "Turno {AppointmentId} reservado para el paciente {PatientId} en el slot {SlotId}",
+            appointment.Id, patient.Id, slot.Id);
 
         return MapToResponse(appointment, slot, patient);
     }
@@ -116,6 +124,8 @@ public class AppointmentService : IAppointmentService
             appointment.AvailabilitySlot.Release();
             await _persistence.Update(appointment.AvailabilitySlot);
         }
+
+        _logger.LogInformation("Turno {AppointmentId} cancelado", appointment.Id);
     }
 
     public async Task<IEnumerable<AppointmentModel.Response>> GetByDate(DateOnly date)
