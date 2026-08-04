@@ -99,9 +99,23 @@ public class AppointmentService : IAppointmentService
             .ToList();
     }
 
-    public Task Cancel(Guid id)
+    public async Task Cancel(Guid id)
     {
-        throw new NotImplementedException();
+        var appointment = await _persistence.GetById<Appointment>(id, "AvailabilitySlot")
+            ?? throw new EntityNotFoundException(nameof(Appointment));
+
+        if (appointment.Status != AppointmentStatus.Booked)
+            throw new ConflictException(ErrorCodes.APPOINTMENT_NOT_CANCELLABLE,
+                nameof(ErrorCodes.APPOINTMENT_NOT_CANCELLABLE));
+
+        appointment.Cancel();
+        await _persistence.Update(appointment);
+
+        if (appointment.AvailabilitySlot is not null)
+        {
+            appointment.AvailabilitySlot.Release();
+            await _persistence.Update(appointment.AvailabilitySlot);
+        }
     }
 
     public Task<IEnumerable<AppointmentModel.Response>> GetByDate(DateOnly date)

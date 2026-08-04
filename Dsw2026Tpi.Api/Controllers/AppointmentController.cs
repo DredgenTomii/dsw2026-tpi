@@ -22,18 +22,32 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    
     public async Task<IActionResult> Create([FromBody] AppointmentModel.Request request)
     {
         var appointment = await _service.Create(request);
         return CreatedAtAction(nameof(Create), new { id = appointment.AppointmentsId }, appointment);
     }
+
     [HttpGet("patient")]
     [Authorize(Policy = Policies.PatientPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    
     public async Task<IActionResult> GetByPatient([FromQuery] long dni)
     {
         var appointments = await _service.GetByPatient(dni);
         return Ok(appointments);
+    }
+
+    [HttpDelete("{id}")]
+    [Authorize(Policy = Policies.PatientPolicy)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Cancel(Guid id)
+    {
+        await _service.Cancel(id);
+        return Ok("ok");
     }
 }
