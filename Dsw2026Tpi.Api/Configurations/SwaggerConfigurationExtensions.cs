@@ -32,7 +32,7 @@ public static class SwaggerConfigurationExtensions
                 };
             });
 
-            // Configura nombres únicos para schemas con tipos anidados
+            
             o.CustomSchemaIds(type => type.FullName?.Replace("+", "."));
         });
         return services;

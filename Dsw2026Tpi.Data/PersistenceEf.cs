@@ -77,13 +77,13 @@ public class PersistenceEf: IPersistence
             return new Pagination<T>(pageSize, pageIndex, total, data);
         }
         
-        //la pagina existe
+        
         if (total > pageSize * pageIndex)
         {
             return await GetPage(pageIndex * pageSize, pageSize);
         }
 
-        //solo hay una pagina
+        
         if (total < pageSize)
         {
             return new Pagination<T>(pageSize, pageIndex, total, await filtered.ToListAsync());

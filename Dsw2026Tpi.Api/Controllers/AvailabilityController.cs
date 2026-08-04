@@ -17,7 +17,7 @@ public class AvailabilityController : AppController
         _service = service;
     }
 
-    /// <summary>Crea la disponibilidad de un médico para un mes. Falla si ya existía (usar PUT).</summary>
+    
     [HttpPost]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -29,7 +29,7 @@ public class AvailabilityController : AppController
         return CreatedAtAction(nameof(Create), result);
     }
 
-    /// <summary>Sobreescribe toda la disponibilidad del mes indicado para ese médico.</summary>
+    
     [HttpPut]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]

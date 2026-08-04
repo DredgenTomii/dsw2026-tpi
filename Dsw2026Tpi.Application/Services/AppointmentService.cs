@@ -50,8 +50,8 @@ public class AppointmentService : IAppointmentService
                 nameof(ErrorCodes.APPOINTMENT_PAST_DATE));
 
         if (slot.IsBooked)
-            throw new ConflictException(ErrorCodes.APPOINTMENT_CONFLICT,
-                nameof(ErrorCodes.APPOINTMENT_CONFLICT));
+            throw new ConflictException(nameof(ErrorCodes.APPOINTMENT_CONFLICT),
+                ErrorCodes.APPOINTMENT_CONFLICT);
 
         var appointment = new Appointment(slot.Id, patient.Id, request.Reason.Trim());
 

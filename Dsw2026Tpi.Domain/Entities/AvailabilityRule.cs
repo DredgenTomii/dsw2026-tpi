@@ -1,11 +1,6 @@
 namespace Dsw2026Tpi.Domain.Entities;
 
-/// <summary>
-/// Regla de disponibilidad: "el médico X atiende los martes de 08:00 a 12:00
-/// durante mayo/2026". A partir de cada regla se generan los AvailabilitySlot
-/// concretos (uno por bloque de 30 minutos, por cada fecha del mes que matchee
-/// el día de semana y no sea feriado).
-/// </summary>
+
 public class AvailabilityRule : EntityBase
 {
     public Guid DoctorId { get; init; }

@@ -1,9 +1,6 @@
 namespace Dsw2026Tpi.Domain.Entities;
 
-/// <summary>
-/// Bloque concreto de 30 minutos, en una fecha puntual, para un médico.
-/// Es lo que Persona 4 va a reservar desde Appointment (IsBooked / MarkBooked / Release).
-/// </summary>
+
 public class AvailabilitySlot : EntityBase
 {
     public Guid DoctorId { get; init; }
@@ -39,14 +36,14 @@ public class AvailabilitySlot : EntityBase
         IsBooked = false;
     }
 
-    /// <summary>Lo va a usar Persona 4 al reservar un turno.</summary>
+    
     public void MarkBooked()
     {
         if (IsBooked) throw new InvalidOperationException("El slot ya está reservado");
         IsBooked = true;
     }
 
-    /// <summary>Lo va a usar Persona 4 al cancelar un turno.</summary>
+    
     public void Release()
     {
         IsBooked = false;

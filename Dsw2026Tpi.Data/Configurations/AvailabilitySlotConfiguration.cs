@@ -15,13 +15,13 @@ public class AvailabilitySlotConfiguration : IEntityTypeConfiguration<Availabili
             .HasForeignKey(s => s.DoctorId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        // Cascade: al borrar una regla (PUT que sobreescribe el mes) se borran sus slots.
+        
         builder.HasOne(s => s.AvailabilityRule)
             .WithMany()
             .HasForeignKey(s => s.AvailabilityRuleId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Un médico no puede tener dos slots que arranquen a la misma hora el mismo día.
+        
         builder.HasIndex(s => new { s.DoctorId, s.Date, s.StartTime }).IsUnique();
     }
 }
