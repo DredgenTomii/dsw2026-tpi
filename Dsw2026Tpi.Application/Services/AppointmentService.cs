@@ -130,7 +130,7 @@ public class AppointmentService : IAppointmentService
             .ToList();
     }
 
-    public Task<Pagination<AppointmentModel.Response>> Search(
+    public async Task<Pagination<AppointmentModel.Response>> Search(
         int pageSize,
         int pageIndex,
         Guid? specialtyId = null,
@@ -138,6 +138,19 @@ public class AppointmentService : IAppointmentService
         long? dni = null,
         DateOnly? date = null)
     {
-        throw new NotImplementedException();
+        if (pageSize <= 0) pageSize = 10;
+        if (pageIndex < 0) pageIndex = 0;
+
+        var page = await _persistence.Paginate<Appointment, DateOnly>(
+            pageSize,
+            pageIndex,
+            a => (specialtyId == null || a.AvailabilitySlot!.Doctor!.SpecialityId == specialtyId)
+              && (doctorId == null || a.AvailabilitySlot!.DoctorId == doctorId)
+              && (dni == null || a.Patient!.Dni == dni)
+              && (date == null || a.AvailabilitySlot!.Date == date),
+            a => a.AvailabilitySlot!.Date,
+            "AvailabilitySlot.Doctor.Speciality", "Patient");
+
+        return page.Map(a => MapToResponse(a, a.AvailabilitySlot!, a.Patient!));
     }
 }

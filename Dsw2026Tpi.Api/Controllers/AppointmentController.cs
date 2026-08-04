@@ -59,4 +59,19 @@ public class AppointmentController : AppController
         var appointments = await _service.GetByDate(date);
         return Ok(appointments);
     }
+
+    [HttpGet("search")]
+    [Authorize(Policy = Policies.AdminPolicy)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Search(
+        [FromQuery] int pageSize = 10,
+        [FromQuery] int pageIndex = 0,
+        [FromQuery] Guid? specialtyId = null,
+        [FromQuery] Guid? doctorId = null,
+        [FromQuery] long? dni = null,
+        [FromQuery] DateOnly? date = null)
+    {
+        var result = await _service.Search(pageSize, pageIndex, specialtyId, doctorId, dni, date);
+        return Ok(result);
+    }
 }
