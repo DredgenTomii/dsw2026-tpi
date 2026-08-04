@@ -16,14 +16,8 @@ public class AppointmentConfiguration : IEntityTypeConfiguration<Appointment>
             .HasMaxLength(300);
 
         var statusConverter = new ValueConverter<AppointmentStatus, string>(
-            status => status == AppointmentStatus.Booked ? "BOOKED"
-                    : status == AppointmentStatus.Cancelled ? "CANCELLED"
-                    : status == AppointmentStatus.Attended ? "ATTENDED"
-                    : "NO_SHOW",
-            texto => texto == "BOOKED" ? AppointmentStatus.Booked
-                   : texto == "CANCELLED" ? AppointmentStatus.Cancelled
-                   : texto == "ATTENDED" ? AppointmentStatus.Attended
-                   : AppointmentStatus.NoShow);
+            status => AppointmentStatusMapper.ToApi(status),
+            texto => AppointmentStatusMapper.FromApi(texto));
 
         builder.Property(a => a.Status)
             .IsRequired()

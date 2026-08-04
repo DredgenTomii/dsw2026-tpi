@@ -73,7 +73,7 @@ public class AppointmentService : IAppointmentService
     {
         return new AppointmentModel.Response(
             appointment.Id,
-            appointment.Status.ToString().ToUpperInvariant(),
+            AppointmentStatusMapper.ToApi(appointment.Status),
             new AppointmentModel.PatientResponse(patient.Dni, patient.Name ?? string.Empty),
             new AppointmentModel.DoctorResponse(
                 slot.DoctorId,
