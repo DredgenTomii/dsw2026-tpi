@@ -83,9 +83,20 @@ public class AppointmentService : IAppointmentService
                     slot.Doctor?.Speciality?.Name ?? string.Empty)));
     }
 
-    public Task<IEnumerable<AppointmentModel.Response>> GetByPatient(long dni)
+    public async Task<IEnumerable<AppointmentModel.Response>> GetByPatient(long dni)
     {
-        throw new NotImplementedException();
+        var patient = await _persistence.First<Patient>(p => p.Dni == dni)
+            ?? throw new EntityNotFoundException(nameof(Patient));
+
+        var appointments = await _persistence.GetFiltered<Appointment>(
+            a => a.PatientId == patient.Id && a.Status == AppointmentStatus.Booked,
+            "AvailabilitySlot.Doctor.Speciality") ?? [];
+
+        return appointments
+            .OrderBy(a => a.AvailabilitySlot!.Date)
+            .ThenBy(a => a.AvailabilitySlot!.StartTime)
+            .Select(a => MapToResponse(a, a.AvailabilitySlot!, patient))
+            .ToList();
     }
 
     public Task Cancel(Guid id)
