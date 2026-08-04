@@ -1,7 +1,10 @@
 using Dsw2026Tpi.Api.Configurations;
 using Dsw2026Tpi.Api.Middlewares;
+using Dsw2026Tpi.CrossCutting.Identity; 
+using Dsw2026Tpi.Data.Identity;       
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;   
 using Serilog;
 
 namespace Dsw2026Tpi.Api;
@@ -10,7 +13,6 @@ public class Program
 {
     public static async Task Main(string[] args)
     {
-        // Inicializar con un logger simple antes de construir el host
         Log.Logger = new LoggerConfiguration()
             .WriteTo.Console()
             .CreateBootstrapLogger();
@@ -21,7 +23,6 @@ public class Program
 
             var builder = WebApplication.CreateBuilder(args);
 
-            //Configuraciones personalizadas
             builder.AddSerilogConfiguration();
             builder.Services.AddAppIdentity();
             builder.Services.AddAppAuthentication(builder.Configuration);
@@ -34,6 +35,39 @@ public class Program
             builder.Services.AddAppRateLimiting(builder.Configuration); 
 
             var app = builder.Build();
+            using (var scope = app.Services.CreateScope())
+            {
+                var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+                var config = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+                var adminEmail = config["AdminSeed:Email"]
+                    ?? throw new InvalidOperationException("Falta configurar AdminSeed:Email");
+                var adminPassword = config["AdminSeed:Password"]
+                    ?? throw new InvalidOperationException("Falta configurar AdminSeed:Password");
+
+                if (await userManager.FindByEmailAsync(adminEmail) is null)
+                {
+                    var admin = new ApplicationUser
+                    {
+                        UserName = adminEmail,
+                        Email = adminEmail,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
+                    };
+
+                    var result = await userManager.CreateAsync(admin, adminPassword);
+                    if (result.Succeeded)
+                    {
+                        await userManager.AddToRoleAsync(admin, Roles.Administrator);
+                        Log.Information("Admin inicial sembrado: {Email}", adminEmail);
+                    }
+                    else
+                    {
+                        Log.Warning("No se pudo sembrar el admin inicial: {Errors}",
+                            string.Join(", ", result.Errors.Select(e => e.Description)));
+                    }
+                }
+            }
 
             app.UseSerilogRequestLogging();
 

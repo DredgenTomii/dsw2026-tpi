@@ -1,6 +1,7 @@
 using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Exceptions;
+using Dsw2026Tpi.CrossCutting.Helpers;
 using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
 
@@ -25,18 +26,18 @@ public class AvailabilityService : IAvailabilityService
     public Task<AvailabilityModel.Response> Replace(AvailabilityModel.Request request) =>
         GenerateMonth(request, isOverwrite: true);
 
-    public async Task<IEnumerable<AvailabilityModel.SlotResponse>> GetByDoctor(Guid doctorId, DateOnly? from, DateOnly? to)
+    public async Task<IEnumerable<AvailabilityModel.RuleResponse>> GetByDoctor(Guid doctorId)
     {
         _ = await _persistence.GetById<Doctor>(doctorId) ?? throw new EntityNotFoundException(nameof(Doctor));
 
-        var slots = await _persistence.GetFiltered<AvailabilitySlot>(s =>
-            s.DoctorId == doctorId &&
-            (from == null || s.Date >= from) &&
-            (to == null || s.Date <= to));
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
 
-        return (slots ?? [])
-            .OrderBy(s => s.Date).ThenBy(s => s.StartTime)
-            .Select(ToSlotResponse);
+        var rules = await _persistence.GetFiltered<AvailabilityRule>(r =>
+            r.DoctorId == doctorId && r.Year == today.Year && r.Month == today.Month) ?? [];
+
+        return rules
+            .OrderBy(r => r.DayOfWeek)
+            .Select(r => new AvailabilityModel.RuleResponse(r.Id, r.DayOfWeek.ToSpanish(), r.StartTime, r.EndTime));
     }
 
     private async Task<AvailabilityModel.Response> GenerateMonth(AvailabilityModel.Request request, bool isOverwrite)
@@ -44,28 +45,34 @@ public class AvailabilityService : IAvailabilityService
         var doctor = await _persistence.GetById<Doctor>(request.DoctorId)
             ?? throw new EntityNotFoundException(nameof(Doctor));
 
-        if (!doctor.IsActive)
+        if (doctor.Deleted)
             throw new BusinessRuleException("El médico no se encuentra activo", "DOCTOR_INACTIVE");
 
-        ValidateMonth(request.Year, request.Month);
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var year = today.Year;
+        var month = today.Month;
 
-        var rules = request.Rules?.ToList() ?? [];
-        if (rules.Count == 0)
+        var days = request.Days?.ToList() ?? [];
+        if (days.Count == 0)
             throw new ValidationException("Debe indicar al menos un día de disponibilidad", "AVAILABILITY_EMPTY_RULES");
+
+        var rules = days
+            .Select(d => (DayOfWeek: d.Day.ToDayOfWeek(), d.StartTime, d.EndTime))
+            .ToList();
 
         ValidateBlocksOf30(rules);   // RN02: bloques de 30 min
         ValidateNoOverlaps(rules);   // RN01: disponibilidad médica sin solapamientos
 
-        await HandleExistingMonth(request, isOverwrite);
+        await HandleExistingMonth(request.DoctorId, year, month, isOverwrite);
 
-        var (rangeStart, lastOfMonth) = ResolveGenerationRange(request.Year, request.Month);
-        var holidays = await _holidayProvider.GetHolidays(request.Year, request.Month);
+        var (rangeStart, lastOfMonth) = ResolveGenerationRange(year, month);
+        var holidays = await _holidayProvider.GetHolidays(year, month);
 
         var createdSlots = new List<AvailabilitySlot>();
 
         foreach (var dayRule in rules)
         {
-            var rule = new AvailabilityRule(request.DoctorId, request.Year, request.Month,
+            var rule = new AvailabilityRule(request.DoctorId, year, month,
                 dayRule.DayOfWeek, dayRule.StartTime, dayRule.EndTime);
             await _persistence.Add(rule);
 
@@ -85,8 +92,8 @@ public class AvailabilityService : IAvailabilityService
 
         return new AvailabilityModel.Response(
             request.DoctorId,
-            request.Year,
-            request.Month,
+            year,
+            month,
             createdSlots.OrderBy(s => s.Date).ThenBy(s => s.StartTime).Select(ToSlotResponse));
     }
 
@@ -94,10 +101,10 @@ public class AvailabilityService : IAvailabilityService
     /// Si ya hay reglas cargadas para ese médico/mes: en POST es conflicto (usar PUT),
     /// en PUT se borran (cascada borra los slots) siempre que ninguno esté reservado.
     /// </summary>
-    private async Task HandleExistingMonth(AvailabilityModel.Request request, bool isOverwrite)
+    private async Task HandleExistingMonth(Guid doctorId, int year, int month, bool isOverwrite)
     {
         var existingRules = (await _persistence.GetFiltered<AvailabilityRule>(r =>
-            r.DoctorId == request.DoctorId && r.Year == request.Year && r.Month == request.Month))?.ToList() ?? [];
+            r.DoctorId == doctorId && r.Year == year && r.Month == month))?.ToList() ?? [];
 
         if (existingRules.Count == 0) return;
 
@@ -144,17 +151,8 @@ public class AvailabilityService : IAvailabilityService
         }
     }
 
-    private static void ValidateMonth(int year, int month)
-    {
-        if (month is < 1 or > 12)
-            throw new ValidationException("El mes debe estar entre 1 y 12", "AVAILABILITY_INVALID_MONTH");
-
-        if (year < DateTime.UtcNow.Year)
-            throw new ValidationException("El año indicado no es válido", "AVAILABILITY_INVALID_YEAR");
-    }
-
     /// <summary>RN02: cada franja declarada debe poder dividirse en bloques exactos de 30 min.</summary>
-    private static void ValidateBlocksOf30(List<AvailabilityModel.DayRuleRequest> rules)
+    private static void ValidateBlocksOf30(List<(DayOfWeek DayOfWeek, TimeOnly StartTime, TimeOnly EndTime)> rules)
     {
         foreach (var rule in rules)
         {
@@ -172,7 +170,7 @@ public class AvailabilityService : IAvailabilityService
     }
 
     /// <summary>RN01: el médico no puede tener dos franjas que se solapen el mismo día.</summary>
-    private static void ValidateNoOverlaps(List<AvailabilityModel.DayRuleRequest> rules)
+    private static void ValidateNoOverlaps(List<(DayOfWeek DayOfWeek, TimeOnly StartTime, TimeOnly EndTime)> rules)
     {
         foreach (var group in rules.GroupBy(r => r.DayOfWeek))
         {

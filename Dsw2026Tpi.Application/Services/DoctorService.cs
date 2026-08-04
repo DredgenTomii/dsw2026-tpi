@@ -50,9 +50,6 @@ public class DoctorService : IDoctorService
         var speciality = await _persistence.GetById<Speciality>(request.SpecialityId)
             ?? throw new EntityNotFoundException(nameof(Speciality));
 
-        // Se muta la MISMA instancia trackeada por EF (Name/LicenseNumber ya no son
-        // "init"), en vez de crear un Doctor nuevo, para evitar el error de EF
-        // "another instance with the same key value is already being tracked".
         doctor.Update(request.Name, request.LicenseNumber, speciality);
         await _persistence.Update(doctor);
 
@@ -64,8 +61,7 @@ public class DoctorService : IDoctorService
         var doctor = await _persistence.GetById<Doctor>(id)
             ?? throw new EntityNotFoundException(nameof(Doctor));
 
-        // Soft delete: la entidad Doctor ya traía IsActive/Deactivate() pensado para esto.
-        doctor.Deactivate();
+        doctor.Delete();
         await _persistence.Update(doctor);
     }
 

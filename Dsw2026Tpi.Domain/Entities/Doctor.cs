@@ -1,22 +1,17 @@
 namespace Dsw2026Tpi.Domain.Entities;
 
-public class Doctor: EntityBase
+public class Doctor : EntityBase
 {
-    // OJO: Name y LicenseNumber pasan de "init" a "private set" para poder
-    // mutar la misma instancia trackeada por EF en el Update (ver DoctorService.Update).
+
     public string Name { get; private set; }
     public string LicenseNumber { get; private set; }
-    public bool IsActive { get; private set; }
+    public bool Deleted { get; private set; }
     public Guid? SpecialityId { get; set; }
     public Speciality? Speciality { get; private set; }
 
-    #region Constructor for EF
-#pragma warning disable CS8618
     private Doctor()
     {
     }
-#pragma warning restore CS8618
-    #endregion
 
     public Doctor(string name, string licenseNumber, Speciality speciality, Guid? id = null) : base(id)
     {
@@ -24,7 +19,7 @@ public class Doctor: EntityBase
         LicenseNumber = licenseNumber;
         Speciality = speciality;
         SpecialityId = speciality?.Id;
-        IsActive = true;
+        Deleted = false;
     }
 
     public void Update(string name, string licenseNumber, Speciality speciality)
@@ -35,8 +30,8 @@ public class Doctor: EntityBase
         SpecialityId = speciality.Id;
     }
 
-    public void Deactivate()
+    public void Delete()
     {
-        IsActive = false;
+        Deleted = true;
     }
 }

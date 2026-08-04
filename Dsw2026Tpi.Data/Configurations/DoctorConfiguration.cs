@@ -10,7 +10,11 @@ public class DoctorConfiguration : IEntityTypeConfiguration<Doctor>
     {
         builder.ToTable("Doctors");
 
-        // Refuerza a nivel de base la validación de matrícula única que hace DoctorService.
         builder.HasIndex(d => d.LicenseNumber).IsUnique();
+
+        builder.Property(d => d.Deleted)
+            .HasDefaultValue(false);
+
+        builder.HasQueryFilter(d => !d.Deleted);
     }
 }

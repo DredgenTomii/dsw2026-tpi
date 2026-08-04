@@ -1,8 +1,10 @@
-﻿using Dsw2026Tpi.Application.Dtos;
+﻿using Dsw2026Tpi.Api.Configurations;
+using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Identity;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Dsw2026Tpi.Api.Controllers;
 
@@ -18,11 +20,11 @@ public class AppointmentController : AppController
 
     [HttpPost]
     [Authorize(Policy = Policies.PatientPolicy)]
+    [EnableRateLimiting(RateLimitingConfigurationExtensions.AppointmentsPolicy)]
     [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    
     public async Task<IActionResult> Create([FromBody] AppointmentModel.Request request)
     {
         var appointment = await _service.Create(request);
