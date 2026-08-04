@@ -90,36 +90,48 @@ public class AvailabilityService : IAvailabilityService
             createdSlots.OrderBy(s => s.Date).ThenBy(s => s.StartTime).Select(ToSlotResponse));
     }
 
-    /// <summary>
-    /// Si ya hay reglas cargadas para ese médico/mes: en POST es conflicto (usar PUT),
-    /// en PUT se borran (cascada borra los slots) siempre que ninguno esté reservado.
-    /// </summary>
-    private async Task HandleExistingMonth(AvailabilityModel.Request request, bool isOverwrite)
+    private async Task HandleExistingMonth(
+        AvailabilityModel.Request request,
+        bool isOverwrite)
     {
         var existingRules = (await _persistence.GetFiltered<AvailabilityRule>(r =>
-            r.DoctorId == request.DoctorId && r.Year == request.Year && r.Month == request.Month))?.ToList() ?? [];
+            r.DoctorId == request.DoctorId &&
+            r.Year == request.Year &&
+            r.Month == request.Month))?.ToList() ?? [];
 
-        if (existingRules.Count == 0) return;
+        if (existingRules.Count == 0)
+            return;
 
         if (!isOverwrite)
-            throw new ConflictException("AVAILABILITY_ALREADY_EXISTS",
+            throw new ConflictException(
+                "AVAILABILITY_ALREADY_EXISTS",
                 "Ya existe una configuración de disponibilidad para ese mes. Utilice PUT para reemplazarla.");
 
-        var existingRuleIds = existingRules.Select(r => r.Id).ToHashSet();
-        var existingSlots = await _persistence.GetFiltered<AvailabilitySlot>(s =>
-            existingRuleIds.Contains(s.AvailabilityRuleId)) ?? [];
+        var existingRuleIds = existingRules
+            .Select(r => r.Id)
+            .ToHashSet();
 
-        if (existingSlots.Any(s => s.IsBooked))
-            throw new ConflictException("AVAILABILITY_HAS_BOOKED_SLOTS",
-                "No se puede sobreescribir el mes: hay turnos reservados. Cancele esos turnos primero.");
+        var existingSlots = (await _persistence.GetFiltered<AvailabilitySlot>(s =>
+            existingRuleIds.Contains(s.AvailabilityRuleId)))?.ToList() ?? [];
+
+        foreach (var slot in existingSlots.Where(s => !s.IsBooked))
+        {
+            await _persistence.Delete(slot);
+        }
+
+        var bookedRuleIds = existingSlots
+            .Where(s => s.IsBooked)
+            .Select(s => s.AvailabilityRuleId)
+            .ToHashSet();
 
         foreach (var rule in existingRules)
         {
-            // OnDelete(Cascade) en AvailabilitySlotConfiguration borra los slots asociados.
-            await _persistence.Delete(rule);
+            if (!bookedRuleIds.Contains(rule.Id))
+            {
+                await _persistence.Delete(rule);
+            }
         }
     }
-
     private static (DateOnly RangeStart, DateOnly LastOfMonth) ResolveGenerationRange(int year, int month)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -153,7 +165,6 @@ public class AvailabilityService : IAvailabilityService
             throw new ValidationException("El año indicado no es válido", "AVAILABILITY_INVALID_YEAR");
     }
 
-    /// <summary>RN02: cada franja declarada debe poder dividirse en bloques exactos de 30 min.</summary>
     private static void ValidateBlocksOf30(List<AvailabilityModel.DayRuleRequest> rules)
     {
         foreach (var rule in rules)
@@ -171,7 +182,6 @@ public class AvailabilityService : IAvailabilityService
         }
     }
 
-    /// <summary>RN01: el médico no puede tener dos franjas que se solapen el mismo día.</summary>
     private static void ValidateNoOverlaps(List<AvailabilityModel.DayRuleRequest> rules)
     {
         foreach (var group in rules.GroupBy(r => r.DayOfWeek))
