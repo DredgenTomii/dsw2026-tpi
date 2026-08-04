@@ -1,7 +1,8 @@
-﻿using Dsw2026Tpi.Api.Services;
+using Dsw2026Tpi.Api.Services;
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.Application.Services;
 using Dsw2026Tpi.Data;
+using Dsw2026Tpi.Data.Holidays;
 using Dsw2026Tpi.Domain.Interfaces;
 
 namespace Dsw2026Tpi.Api.Configurations;
@@ -16,6 +17,11 @@ public static class DependencyInjectionConfigurationExtensions
         services.AddScoped<ISignInService, SignInService>();
         services.AddScoped<ISpecialityService, SpecialityService>();
         services.AddSingleton<JwtService>();
+
+        // Nuevo (Persona 3: Médicos + Disponibilidades)
+        services.AddScoped<IAvailabilityService, AvailabilityService>();
+        services.AddSingleton<IHolidayProvider, HolidayProvider>();
+
         return services;
     }
 }
