@@ -62,8 +62,8 @@ public class AppointmentService : IAppointmentService
         catch (DbUpdateException)
         {
             _logger.LogWarning("Conflicto de concurrencia al reservar el slot {SlotId}", slot.Id);
-            throw new ConflictException(ErrorCodes.APPOINTMENT_CONFLICT,
-                nameof(ErrorCodes.APPOINTMENT_CONFLICT));
+            throw new ConflictException(nameof(ErrorCodes.APPOINTMENT_CONFLICT),
+                ErrorCodes.APPOINTMENT_CONFLICT);
         }
 
         slot.MarkBooked();
@@ -113,8 +113,8 @@ public class AppointmentService : IAppointmentService
             ?? throw new EntityNotFoundException(nameof(Appointment));
 
         if (appointment.Status != AppointmentStatus.Booked)
-            throw new ConflictException(ErrorCodes.APPOINTMENT_NOT_CANCELLABLE,
-                nameof(ErrorCodes.APPOINTMENT_NOT_CANCELLABLE));
+            throw new ConflictException(nameof(ErrorCodes.APPOINTMENT_NOT_CANCELLABLE),
+                ErrorCodes.APPOINTMENT_NOT_CANCELLABLE);
 
         appointment.Cancel();
         await _persistence.Update(appointment);

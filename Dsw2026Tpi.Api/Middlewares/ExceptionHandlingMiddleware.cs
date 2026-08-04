@@ -11,6 +11,11 @@ public class ExceptionHandlingMiddleware
     private readonly RequestDelegate _next;
     private readonly ILogger<ExceptionHandlingMiddleware> _logger;
 
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
     {
         _next = next;
@@ -32,8 +37,8 @@ public class ExceptionHandlingMiddleware
 
     private async Task HandleExceptionAsync(HttpContext context, Exception ex)
     {
-        ErrorResponse error = ex is AppException exApp ? 
-            exApp.Error : 
+        ErrorResponse error = ex is AppException exApp ?
+            exApp.Error :
             new ErrorResponse(nameof(ErrorCodes.UNHANDLED_ERROR), ErrorCodes.UNHANDLED_ERROR);
         var status = ex switch
         {
@@ -43,7 +48,7 @@ public class ExceptionHandlingMiddleware
             AuthorizationException => HttpStatusCode.Unauthorized,
             _ => HttpStatusCode.InternalServerError,
         };
-        var result = JsonSerializer.Serialize(error);
+        var result = JsonSerializer.Serialize(error, JsonOptions);
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)status;
         await context.Response.WriteAsync(result);
