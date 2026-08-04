@@ -60,9 +60,11 @@ public static class RateLimitingConfigurationExtensions
                 logger.LogWarning("Rate limit excedido en {Path} desde {Ip}",
                     context.HttpContext.Request.Path, context.HttpContext.Connection.RemoteIpAddress);
 
-                context.HttpContext.Response.ContentType = "application/json";
+                context.HttpContext.Response.ContentType = "application/json";                
                 var error = new ErrorResponse(nameof(ErrorCodes.RATE_LIMIT_EXCEEDED), ErrorCodes.RATE_LIMIT_EXCEEDED);
-                await context.HttpContext.Response.WriteAsync(JsonSerializer.Serialize(error), cancellationToken);
+                await context.HttpContext.Response.WriteAsync(
+                    JsonSerializer.Serialize(error, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }),
+                    cancellationToken);
             };
         });
 
