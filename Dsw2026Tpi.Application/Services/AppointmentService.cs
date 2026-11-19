@@ -23,8 +23,8 @@ public class AppointmentService : IAppointmentService
         _logger = logger;
     }
 
-    public async Task<AppointmentModel.Response> Create(AppointmentModel.Request request)
-    {
+    public async Task<AppointmentModel.Response> Create(AppointmentModel.Request request, string email)
+        {
         if (string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Trim().Length < 5)
             throw new ValidationException(ErrorCodes.APPOINTMENT_INVALID_REASON,
                 nameof(ErrorCodes.APPOINTMENT_INVALID_REASON));
@@ -36,6 +36,8 @@ public class AppointmentService : IAppointmentService
 
         var patient = await _persistence.First<Patient>(p => p.Dni == request.Patient.Dni)
             ?? throw new EntityNotFoundException(nameof(Patient));
+            
+        EnsureOwner(patient, email);
 
         var slot = await _persistence.GetById<AvailabilitySlot>(
             request.AvailabilitySlotId, "Doctor.Speciality")
@@ -76,6 +78,16 @@ public class AppointmentService : IAppointmentService
         return MapToResponse(appointment, slot, patient);
     }
 
+     private void EnsureOwner(Patient patient, string email)
+    {
+        if (!string.Equals(patient.Email, email, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("El usuario {Email} intentó acceder a datos del paciente {PatientId}",
+                email, patient.Id);
+            throw new AuthorizationException();
+        }
+    }
+
     private static AppointmentModel.Response MapToResponse(
         Appointment appointment, AvailabilitySlot slot, Patient patient)
     {
@@ -91,10 +103,11 @@ public class AppointmentService : IAppointmentService
                     slot.Doctor?.Speciality?.Name ?? string.Empty)));
     }
 
-    public async Task<IEnumerable<AppointmentModel.Response>> GetByPatient(long dni)
-    {
+    public async Task<IEnumerable<AppointmentModel.Response>> GetByPatient(long dni, string email)    {
         var patient = await _persistence.First<Patient>(p => p.Dni == dni)
             ?? throw new EntityNotFoundException(nameof(Patient));
+
+        EnsureOwner(patient, email);
 
         var appointments = await _persistence.GetFiltered<Appointment>(
             a => a.PatientId == patient.Id && a.Status == AppointmentStatus.Booked,
@@ -107,10 +120,12 @@ public class AppointmentService : IAppointmentService
             .ToList();
     }
 
-    public async Task Cancel(Guid id)
+    public async Task Cancel(Guid id, string email)
     {
-        var appointment = await _persistence.GetById<Appointment>(id, "AvailabilitySlot")
+        var appointment = await _persistence.GetById<Appointment>(id, "AvailabilitySlot", "Patient")
             ?? throw new EntityNotFoundException(nameof(Appointment));
+
+        EnsureOwner(appointment.Patient!, email);
 
         if (appointment.Status != AppointmentStatus.Booked)
             throw new ConflictException(nameof(ErrorCodes.APPOINTMENT_NOT_CANCELLABLE),
