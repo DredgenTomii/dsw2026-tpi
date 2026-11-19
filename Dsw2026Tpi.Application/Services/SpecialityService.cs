@@ -17,6 +17,9 @@ public class SpecialityService : ISpecialityService
 
     public async Task<Pagination<SpecialityModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null)
     {
+        if (pageSize <= 0) pageSize = 1000;
+        if (pageIndex <= 0) pageIndex = 1;
+
         ValidateNameFilter(name);
 
         var specialities = await _persistence.Paginate<Speciality, string>(pageSize, pageIndex,
