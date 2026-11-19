@@ -37,8 +37,8 @@ public class AppointmentService : IAppointmentService
         var patient = await _persistence.First<Patient>(p => p.Dni == request.Patient.Dni)
             ?? throw new EntityNotFoundException(nameof(Patient));
 
-        var slot = await _persistence.GetById<AvailabilitySlot>(
-            request.AvailabilitySlotId, "Doctor.Speciality")
+          var slot = await _persistence.GetById<AvailabilitySlot>(
+            request.AvailabilityId, "Doctor.Speciality")
             ?? throw new EntityNotFoundException(nameof(AvailabilitySlot));
 
         if (slot.DoctorId != request.DoctorId)
