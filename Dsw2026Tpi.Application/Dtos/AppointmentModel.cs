@@ -6,7 +6,7 @@ public class AppointmentModel
 
     public record Request(
         Guid DoctorId,
-        Guid AvailabilitySlotId,
+        Guid AvailabilityId,
         PatientRequest Patient,
         string Reason);
 
