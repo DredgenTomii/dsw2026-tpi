@@ -27,7 +27,7 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([FromBody] AppointmentModel.Request request)
     {
-        var appointment = await _service.Create(request);
+        var appointment = await _service.Create(request, User.Identity!.Name!);
         return CreatedAtAction(nameof(Create), new { id = appointment.AppointmentsId }, appointment);
     }
 
@@ -38,7 +38,7 @@ public class AppointmentController : AppController
     
     public async Task<IActionResult> GetByPatient([FromQuery] long dni)
     {
-        var appointments = await _service.GetByPatient(dni);
+        var appointments = await _service.GetByPatient(dni, User.Identity!.Name!);
         return Ok(appointments);
     }
 
@@ -49,7 +49,7 @@ public class AppointmentController : AppController
     [ProducesResponseType(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Cancel(Guid id)
     {
-        await _service.Cancel(id);
+        await _service.Cancel(id, User.Identity!.Name!);
         return Ok("ok");
     }
 
