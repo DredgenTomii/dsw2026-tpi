@@ -16,12 +16,13 @@ public class AppointmentModel
 
     public record PatientResponse(long Dni, string FullName);
 
-        public record Response(
-        Guid AppointmentsId,
-        string AppointmentsStatus,
-        DateOnly Date,
-        TimeOnly StartTime,
-        TimeOnly EndTime,
-        string Reason,
-        PatientResponse Patient,
-        DoctorResponse Doctor);
+    public record Response(
+    Guid AppointmentsId,
+    string AppointmentsStatus,
+    DateOnly Date,
+    TimeOnly StartTime,
+    TimeOnly EndTime,
+    string Reason,
+    PatientResponse Patient,
+    DoctorResponse Doctor);
+}
