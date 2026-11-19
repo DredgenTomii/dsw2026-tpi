@@ -79,9 +79,13 @@ public class AppointmentService : IAppointmentService
     private static AppointmentModel.Response MapToResponse(
         Appointment appointment, AvailabilitySlot slot, Patient patient)
     {
-        return new AppointmentModel.Response(
+         return new AppointmentModel.Response(
             appointment.Id,
             AppointmentStatusMapper.ToApi(appointment.Status),
+            slot.Date,
+            slot.StartTime,
+            slot.EndTime,
+            appointment.Reason,
             new AppointmentModel.PatientResponse(patient.Dni, patient.Name ?? string.Empty),
             new AppointmentModel.DoctorResponse(
                 slot.DoctorId,
