@@ -19,7 +19,7 @@ public class SpecialityController : AppController
 
     [HttpGet]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAll([FromQuery] int pageSize, [FromQuery] int pageIndex, [FromQuery] string? name = null)
+    public async Task<IActionResult> GetAll([FromQuery] int pageSize = 0, [FromQuery] int pageIndex = 1, [FromQuery] string? name = null)
     {
         var specialities = await _service.GetAll(pageSize, pageIndex, name);
         return Ok(specialities);

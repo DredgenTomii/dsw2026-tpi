@@ -15,11 +15,18 @@ public class DoctorService : IDoctorService
         _persistence = persistence;
     }
 
-    public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null)
+    public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null, Guid? specialtyId = null)
     {
-        var doctors = await _persistence.Paginate<Doctor, string>(pageSize, pageIndex, d => string.IsNullOrWhiteSpace(name) ||
-                                                   d.Name.Contains(name), x => x.Name, nameof(Doctor.Speciality));
+        if (pageSize <= 0) pageSize = 1000;
+        if (pageIndex <= 0) pageIndex = 1;
 
+        if (!string.IsNullOrWhiteSpace(name) && name.Length is < 3 or > 100)
+            throw new ValidationException().WithDetail(nameof(name), "El nombre debe tener entre 3 y 100 caracteres");
+
+        var doctors = await _persistence.Paginate<Doctor, string>(pageSize, pageIndex, d => (string.IsNullOrWhiteSpace(name) ||
+            d.Name.Contains(name)) && (specialtyId == null || d.SpecialityId == specialtyId),
+            x => x.Name, nameof(Doctor.Speciality));
+        
         return doctors.Map(ToResponse);
     }
 
@@ -27,7 +34,7 @@ public class DoctorService : IDoctorService
     {
         ValidateRequest(request);
 
-        var speciality = await _persistence.GetById<Speciality>(request.SpecialityId)
+        var speciality = await _persistence.GetById<Speciality>(request.SpecialtyId)
             ?? throw new EntityNotFoundException(nameof(Speciality));
 
         await EnsureLicenseNumberIsFree(request.LicenseNumber);
@@ -47,7 +54,7 @@ public class DoctorService : IDoctorService
 
         await EnsureLicenseNumberIsFree(request.LicenseNumber, excludingDoctorId: id);
 
-        var speciality = await _persistence.GetById<Speciality>(request.SpecialityId)
+        var speciality = await _persistence.GetById<Speciality>(request.SpecialtyId)
             ?? throw new EntityNotFoundException(nameof(Speciality));
 
         doctor.Update(request.Name, request.LicenseNumber, speciality);
@@ -84,8 +91,8 @@ public class DoctorService : IDoctorService
         if (string.IsNullOrWhiteSpace(request.LicenseNumber) || request.LicenseNumber.Length is < 3 or > 20)
             errors.Add((nameof(request.LicenseNumber), "La matrícula debe tener entre 3 y 20 caracteres"));
 
-        if (request.SpecialityId == Guid.Empty)
-            errors.Add((nameof(request.SpecialityId), "Debe indicar una especialidad válida"));
+        if (request.SpecialtyId == Guid.Empty)
+            errors.Add((nameof(request.SpecialtyId), "Debe indicar una especialidad válida"));
 
         if (errors.Count > 0)
             throw new ValidationException().WithDetail(errors);
@@ -93,5 +100,5 @@ public class DoctorService : IDoctorService
 
     private static DoctorModel.Response ToResponse(Doctor doctor) =>
         new(doctor.Id, doctor.Name, doctor.LicenseNumber,
-            new DoctorModel.SpecialityDto(doctor.Speciality?.Id, doctor.Speciality?.Name));
+            new DoctorModel.SpecialtyDto(doctor.Speciality?.Id, doctor.Speciality?.Name));
 }

@@ -20,16 +20,16 @@ public class DoctorController : AppController
     }
 
     [HttpGet]
-    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
-        [FromQuery] int pageSize,
-        [FromQuery] int pageIndex,
-        [FromQuery] string? name = null)
+        [FromQuery] int pageSize = 0,
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] string? name = null,
+        [FromQuery] Guid? specialtyId = null)
     {
-        var doctors = await _service.GetAll(pageSize, pageIndex, name);
+        var doctors = await _service.GetAll(pageSize, pageIndex, name, specialtyId);
         return Ok(doctors);
     }
-
+    
     [HttpPost]
     [Authorize(Policy = Policies.AdminPolicy)]
     [ProducesResponseType(StatusCodes.Status201Created)]
