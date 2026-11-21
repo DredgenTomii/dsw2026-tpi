@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using Dsw2026Tpi.Application.Dtos;
@@ -113,8 +113,10 @@ public class AppointmentService : IAppointmentService
 
         EnsureOwner(patient, email);
 
-        var appointments = await _persistence.GetFiltered<Appointment>(
-            a => a.PatientId == patient.Id && a.Status == AppointmentStatus.Booked,
+        // Incluye turnos reservados, cancelados, atendidos y ausentes,
+        // incluso si el médico fue eliminado lógicamente.
+        var appointments = await _persistence.GetFilteredIncludingDeleted<Appointment>(
+            a => a.PatientId == patient.Id,
             "AvailabilitySlot.Doctor.Speciality") ?? [];
 
         return appointments

@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Exceptions;
@@ -15,7 +16,7 @@ public class DoctorService : IDoctorService
         _persistence = persistence;
     }
 
-    public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null, Guid? specialtyId = null)
+    public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null, Guid? specialtyId = null, bool includeDeleted = false)
     {
         if (pageSize <= 0) pageSize = 1000;
         if (pageIndex <= 0) pageIndex = 1;
@@ -23,10 +24,17 @@ public class DoctorService : IDoctorService
         if (!string.IsNullOrWhiteSpace(name) && name.Length is < 3 or > 100)
             throw new ValidationException().WithDetail(nameof(name), "El nombre debe tener entre 3 y 100 caracteres");
 
-        var doctors = await _persistence.Paginate<Doctor, string>(pageSize, pageIndex, d => (string.IsNullOrWhiteSpace(name) ||
-            d.Name.Contains(name)) && (specialtyId == null || d.SpecialityId == specialtyId),
-            x => x.Name, nameof(Doctor.Speciality));
-        
+        Expression<Func<Doctor, bool>> filter = d =>
+            (string.IsNullOrWhiteSpace(name) || d.Name.Contains(name)) &&
+            (specialtyId == null || d.SpecialityId == specialtyId);
+
+        // Solo la consulta de administración ignora el filtro de borrado lógico.
+        var doctors = includeDeleted
+            ? await _persistence.PaginateIncludingDeleted<Doctor, string>(
+                pageSize, pageIndex, filter, d => d.Name, nameof(Doctor.Speciality))
+            : await _persistence.Paginate<Doctor, string>(
+                pageSize, pageIndex, filter, d => d.Name, nameof(Doctor.Speciality));
+
         return doctors.Map(ToResponse);
     }
 
@@ -121,5 +129,5 @@ public class DoctorService : IDoctorService
 
     private static DoctorModel.Response ToResponse(Doctor doctor) =>
         new(doctor.Id, doctor.Name, doctor.LicenseNumber,
-            new DoctorModel.SpecialtyDto(doctor.Speciality?.Id, doctor.Speciality?.Name));
+            new DoctorModel.SpecialtyDto(doctor.Speciality?.Id, doctor.Speciality?.Name), doctor.Deleted);
 }

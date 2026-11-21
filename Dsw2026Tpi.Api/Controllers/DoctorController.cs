@@ -29,7 +29,20 @@ public class DoctorController : AppController
         var doctors = await _service.GetAll(pageSize, pageIndex, name, specialtyId);
         return Ok(doctors);
     }
-    
+
+    // El administrador también ve médicos dados de baja, con su estado.
+    [HttpGet("admin")]
+    [Authorize(Policy = Policies.AdminPolicy)]
+    public async Task<IActionResult> GetAllForAdmin(
+        [FromQuery] int pageSize = 0,
+        [FromQuery] int pageIndex = 1,
+        [FromQuery] string? name = null,
+        [FromQuery] Guid? specialtyId = null)
+    {
+        var doctors = await _service.GetAll(pageSize, pageIndex, name, specialtyId, includeDeleted: true);
+        return Ok(doctors);
+    }
+
     [HttpPost]
     [Authorize(Policy = Policies.AdminPolicy)]
     [ProducesResponseType(StatusCodes.Status201Created)]
