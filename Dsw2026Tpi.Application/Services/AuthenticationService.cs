@@ -50,7 +50,8 @@ public class AuthenticationService : IAuthenticationService
 
         var role = (await _userManager.GetRolesAsync(user)).FirstOrDefault();
 
-        var token  = _jwtService.GenerateToken(user.UserName!, role);
+        var stamp = await _userManager.GetSecurityStampAsync(user);
+        var token = _jwtService.GenerateToken(user.UserName!, role, stamp);
 
         return new LoginAdminModel.Response(
             token,
@@ -60,30 +61,102 @@ public class AuthenticationService : IAuthenticationService
 
     public async Task<LoginPatientModel.Response> LoginPatient(LoginPatientModel.Request request)
     {
-        if (!request.Email.IsEmailValid() || !request.Dni.IsDniValid())
+        if (!request.Email.IsEmailValid() || string.IsNullOrWhiteSpace(request.Password))
             throw new ValidationException(ErrorCodes.PATIENT_LOGIN_INVALID, nameof(ErrorCodes.PATIENT_LOGIN_INVALID));
 
-        var patient = await _persistence.First<Patient>(p => p.Dni == request.Dni);
+        var user = await _userManager.FindByEmailAsync(request.Email) ?? throw new AuthenticationException();
 
-        if (patient is null)
+        var isPatient = await _userManager.IsInRoleAsync(user, Roles.Patient);
+        var passwordOk = isPatient && await _signInManager.CheckPassword(user, request.Password);
+
+        if (!passwordOk)
         {
-            patient = new Patient(request.Dni, request.Email)
-            {
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            await _persistence.Add(patient);
-            _logger.LogInformation("Paciente autoregistrado: {Dni}", request.Dni);
-        }
-        else if (!string.Equals(patient.Email, request.Email, StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogError("Intento de login fallido para patient: {Dni}", request.Dni);
+            _logger.LogError("Intento de login fallido para paciente: {Email}", request.Email);
             throw new AuthenticationException();
         }
 
-        var token = _jwtService.GenerateToken(patient.Email, Roles.Patient);
+        var patient = await _persistence.First<Patient>(p => p.Email == request.Email)
+            ?? throw new AuthenticationException();
 
-        return new LoginPatientModel.Response(token, Roles.Patient);
+        return await BuildPatientResponse(user, patient);
+    }
+
+    public async Task<LoginPatientModel.Response> RegisterPatient(RegisterPatientModel.Request request)
+    {
+        var name = request.Name?.Trim() ?? string.Empty;
+
+        if (!request.Email.IsEmailValid() || !request.Dni.IsDniValid() || name.Length is < 3 or > 150)
+            throw new ValidationException(ErrorCodes.REGISTER_USER_INVALID, nameof(ErrorCodes.REGISTER_USER_INVALID));
+
+        if (await _userManager.FindByEmailAsync(request.Email) is not null)
+            throw new ConflictException(nameof(ErrorCodes.REGISTER_USER_CONFLICT), ErrorCodes.REGISTER_USER_CONFLICT);
+
+        var patient = await _persistence.First<Patient>(p => p.Dni == request.Dni);
+
+        if (patient is not null && !string.Equals(patient.Email, request.Email, StringComparison.OrdinalIgnoreCase))
+            throw new ConflictException(nameof(ErrorCodes.REGISTER_USER_CONFLICT), ErrorCodes.REGISTER_USER_CONFLICT);
+
+        var user = new ApplicationUser
+        {
+            UserName = request.Email,
+            Email = request.Email,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+
+        var result = await _userManager.CreateAsync(user, request.Password);
+
+        if (!result.Succeeded)
+            throw new ValidationException(ErrorCodes.REGISTER_USER_INVALID, nameof(ErrorCodes.REGISTER_USER_INVALID))
+                .WithDetail(result.Errors.Select(e => ("password", e.Description)));
+
+        try
+        {
+            await _userManager.AddToRoleAsync(user, Roles.Patient);
+
+            if (patient is null)
+            {
+                patient = new Patient(request.Dni, request.Email, name)
+                {
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+                await _persistence.Add(patient);
+            }
+            else
+            {
+                patient.UpdateName(name);
+                await _persistence.Update(patient);
+            }
+        }
+        catch
+        {
+            await _userManager.DeleteAsync(user);
+            throw;
+        }
+
+        _logger.LogInformation("Paciente registrado: {Dni}", request.Dni);
+
+        return await BuildPatientResponse(user, patient);
+    }
+
+    public async Task Logout(string userName)
+    {
+        var user = await _userManager.FindByNameAsync(userName);
+
+        if (user is null) return;
+
+        await _userManager.UpdateSecurityStampAsync(user);
+
+        _logger.LogInformation("Sesiones revocadas para: {UserName}", userName);
+    }
+
+    private async Task<LoginPatientModel.Response> BuildPatientResponse(ApplicationUser user, Patient patient)
+    {
+        var stamp = await _userManager.GetSecurityStampAsync(user);
+        var token = _jwtService.GenerateToken(user.UserName!, Roles.Patient, stamp);
+
+        return new LoginPatientModel.Response(token, Roles.Patient, patient.Name, patient.Dni);
     }
 
     public async Task<RegisterModel.Response> Register(RegisterModel.Request request)

@@ -48,4 +48,25 @@ public class AuthenticationController : AppController
         var result = await _authenticationService.LoginPatient(request);
         return Ok(result);
     }
+
+    [HttpPost("patient/register")]
+    [EnableRateLimiting(RateLimitingConfigurationExtensions.PatientLoginPolicy)]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RegisterPatient([FromBody] RegisterPatientModel.Request request)
+    {
+        var result = await _authenticationService.RegisterPatient(request);
+        return StatusCode(StatusCodes.Status201Created, result);
+    }
+
+    [HttpPost("logout")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> Logout()
+    {
+        await _authenticationService.Logout(User.Identity!.Name!);
+        return NoContent();
+    }
 }

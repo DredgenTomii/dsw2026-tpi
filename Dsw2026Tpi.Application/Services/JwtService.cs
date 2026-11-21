@@ -8,13 +8,15 @@ namespace Dsw2026Tpi.Application.Services;
 
 public class JwtService
 {
+    public const string SecurityStampClaim = "stamp";
+
     private readonly IConfiguration _config;
     public JwtService(IConfiguration config)
     {
         _config = config;
     }
 
-    public string GenerateToken(string username, string? role)
+    public string GenerateToken(string username, string? role, string? securityStamp = null)
     {
         if (_config == null) throw new ArgumentNullException();
         var jwtConfig = _config.GetSection("Jwt");
@@ -25,12 +27,15 @@ public class JwtService
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expiresIn = int.Parse(jwtConfig["ExpiresInMinutes"] ?? "60");
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub, username),
-            new Claim(ClaimTypes.Name, username),
-            new Claim(ClaimTypes.Role, role ?? string.Empty)
+            new(JwtRegisteredClaimNames.Sub, username),
+            new(ClaimTypes.Name, username),
+            new(ClaimTypes.Role, role ?? string.Empty)
         };
+
+        if (!string.IsNullOrEmpty(securityStamp))
+            claims.Add(new Claim(SecurityStampClaim, securityStamp));
 
         var token = new JwtSecurityToken(
             issuer: issuer,

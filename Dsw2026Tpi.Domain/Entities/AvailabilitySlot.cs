@@ -5,7 +5,7 @@ public class AvailabilitySlot : EntityBase
 {
     public Guid DoctorId { get; init; }
     public Doctor? Doctor { get; private set; }
-    public Guid AvailabilityRuleId { get; init; }
+    public Guid AvailabilityRuleId { get; private set; }
     public AvailabilityRule? AvailabilityRule { get; private set; }
     public DateOnly Date { get; init; }
     public TimeOnly StartTime { get; init; }
@@ -47,5 +47,10 @@ public class AvailabilitySlot : EntityBase
     public void Release()
     {
         IsBooked = false;
+    }
+
+    public void MoveToRule(Guid availabilityRuleId)
+    {
+        AvailabilityRuleId = availabilityRuleId;
     }
 }

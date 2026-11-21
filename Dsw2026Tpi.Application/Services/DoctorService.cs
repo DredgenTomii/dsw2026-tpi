@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Exceptions;
@@ -15,19 +16,24 @@ public class DoctorService : IDoctorService
         _persistence = persistence;
     }
 
-    public async Task<Pagination<DoctorModel.Response>> GetAll(
-        int pageSize,
-        int pageIndex,
-        string? name = null,
-        Guid? specialtyId = null)
+    public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null, Guid? specialtyId = null, bool includeDeleted = false)
     {
-        var doctors = await _persistence.Paginate<Doctor, string>(
-            pageSize,
-            pageIndex,
-            d => (string.IsNullOrWhiteSpace(name) || d.Name.Contains(name))
-              && (specialtyId == null || d.SpecialityId == specialtyId),
-            x => x.Name,
-            nameof(Doctor.Speciality));
+        if (pageSize <= 0) pageSize = 1000;
+        if (pageIndex <= 0) pageIndex = 1;
+
+        if (!string.IsNullOrWhiteSpace(name) && name.Length is < 3 or > 100)
+            throw new ValidationException().WithDetail(nameof(name), "El nombre debe tener entre 3 y 100 caracteres");
+
+        Expression<Func<Doctor, bool>> filter = d =>
+            (string.IsNullOrWhiteSpace(name) || d.Name.Contains(name)) &&
+            (specialtyId == null || d.SpecialityId == specialtyId);
+
+        // Solo la consulta de administración ignora el filtro de borrado lógico.
+        var doctors = includeDeleted
+            ? await _persistence.PaginateIncludingDeleted<Doctor, string>(
+                pageSize, pageIndex, filter, d => d.Name, nameof(Doctor.Speciality))
+            : await _persistence.Paginate<Doctor, string>(
+                pageSize, pageIndex, filter, d => d.Name, nameof(Doctor.Speciality));
 
         return doctors.Map(ToResponse);
     }
@@ -70,8 +76,29 @@ public class DoctorService : IDoctorService
         var doctor = await _persistence.GetById<Doctor>(id)
             ?? throw new EntityNotFoundException(nameof(Doctor));
 
+        await CancelFutureAppointments(id);
+
         doctor.Delete();
         await _persistence.Update(doctor);
+    }
+
+    private async Task CancelFutureAppointments(Guid doctorId)
+    {
+        var now = DateTime.Now;
+        var today = DateOnly.FromDateTime(now);
+        var currentTime = TimeOnly.FromDateTime(now);
+
+        var future = await _persistence.GetFiltered<Appointment>(a =>
+            a.Status == AppointmentStatus.Booked &&
+            a.AvailabilitySlot!.DoctorId == doctorId &&
+            (a.AvailabilitySlot.Date > today ||
+             (a.AvailabilitySlot.Date == today && a.AvailabilitySlot.StartTime > currentTime))) ?? [];
+
+        foreach (var appointment in future)
+        {
+            appointment.Cancel();
+            await _persistence.Update(appointment);
+        }
     }
 
     private async Task EnsureLicenseNumberIsFree(string licenseNumber, Guid? excludingDoctorId = null)
@@ -102,5 +129,5 @@ public class DoctorService : IDoctorService
 
     private static DoctorModel.Response ToResponse(Doctor doctor) =>
         new(doctor.Id, doctor.Name, doctor.LicenseNumber,
-            new DoctorModel.SpecialtyDto(doctor.Speciality?.Id, doctor.Speciality?.Name));
+            new DoctorModel.SpecialtyDto(doctor.Speciality?.Id, doctor.Speciality?.Name), doctor.Deleted);
 }

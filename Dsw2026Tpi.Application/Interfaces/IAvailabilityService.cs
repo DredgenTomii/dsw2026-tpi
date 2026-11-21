@@ -7,5 +7,5 @@ public interface IAvailabilityService
     Task<AvailabilityModel.Response> Create(AvailabilityModel.Request request);
     Task<AvailabilityModel.Response> Replace(AvailabilityModel.Request request);
     Task<IEnumerable<AvailabilityModel.RuleResponse>> GetByDoctor(Guid doctorId);
-    Task<IEnumerable<AvailabilityModel.SlotResponse>> GetSlots(Guid doctorId, DateOnly from, DateOnly to);
+    Task<IEnumerable<AvailabilityModel.SlotStateResponse>> GetSlots(Guid doctorId, DateOnly from, DateOnly to);
 }
