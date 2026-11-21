@@ -15,18 +15,20 @@ public class DoctorService : IDoctorService
         _persistence = persistence;
     }
 
-    public async Task<Pagination<DoctorModel.Response>> GetAll(int pageSize, int pageIndex, string? name = null, Guid? specialtyId = null)
+    public async Task<Pagination<DoctorModel.Response>> GetAll(
+        int pageSize,
+        int pageIndex,
+        string? name = null,
+        Guid? specialtyId = null)
     {
-        if (pageSize <= 0) pageSize = 1000;
-        if (pageIndex <= 0) pageIndex = 1;
+        var doctors = await _persistence.Paginate<Doctor, string>(
+            pageSize,
+            pageIndex,
+            d => (string.IsNullOrWhiteSpace(name) || d.Name.Contains(name))
+              && (specialtyId == null || d.SpecialityId == specialtyId),
+            x => x.Name,
+            nameof(Doctor.Speciality));
 
-        if (!string.IsNullOrWhiteSpace(name) && name.Length is < 3 or > 100)
-            throw new ValidationException().WithDetail(nameof(name), "El nombre debe tener entre 3 y 100 caracteres");
-
-        var doctors = await _persistence.Paginate<Doctor, string>(pageSize, pageIndex, d => (string.IsNullOrWhiteSpace(name) ||
-            d.Name.Contains(name)) && (specialtyId == null || d.SpecialityId == specialtyId),
-            x => x.Name, nameof(Doctor.Speciality));
-        
         return doctors.Map(ToResponse);
     }
 

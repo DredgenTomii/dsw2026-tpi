@@ -10,8 +10,5 @@ public record AvailabilityModel
 
     public record Response(Guid DoctorId, int Year, int Month, IEnumerable<SlotResponse> Slots);
 
-    public record RuleResponse(Guid Id, string Day, TimeOnly StartTime, TimeOnly EndTime);
-
-    
-    public record FreeSlotResponse(Guid Id, DateOnly Date, TimeOnly StartTime, TimeOnly EndTime);
+    public record RuleResponse(string Day, TimeOnly StartTime, TimeOnly EndTime);
 }

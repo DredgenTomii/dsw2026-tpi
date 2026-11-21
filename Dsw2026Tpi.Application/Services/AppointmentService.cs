@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Dsw2026Tpi.Application.Dtos;
+﻿using Dsw2026Tpi.Application.Dtos;
 using Dsw2026Tpi.Application.Interfaces;
 using Dsw2026Tpi.CrossCutting.Exceptions;
 using Dsw2026Tpi.CrossCutting.Resources;
@@ -24,7 +21,7 @@ public class AppointmentService : IAppointmentService
     }
 
     public async Task<AppointmentModel.Response> Create(AppointmentModel.Request request, string email)
-        {
+    {
         if (string.IsNullOrWhiteSpace(request.Reason) || request.Reason.Trim().Length < 5)
             throw new ValidationException(ErrorCodes.APPOINTMENT_INVALID_REASON,
                 nameof(ErrorCodes.APPOINTMENT_INVALID_REASON));
@@ -36,10 +33,11 @@ public class AppointmentService : IAppointmentService
 
         var patient = await _persistence.First<Patient>(p => p.Dni == request.Patient.Dni)
             ?? throw new EntityNotFoundException(nameof(Patient));
-            
-        EnsureOwner(patient, email);
 
-          var slot = await _persistence.GetById<AvailabilitySlot>(
+        if (!string.Equals(patient.Email, email, StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException("No tiene permisos para operar sobre este paciente.");
+
+        var slot = await _persistence.GetById<AvailabilitySlot>(
             request.AvailabilityId, "Doctor.Speciality")
             ?? throw new EntityNotFoundException(nameof(AvailabilitySlot));
 
@@ -78,26 +76,12 @@ public class AppointmentService : IAppointmentService
         return MapToResponse(appointment, slot, patient);
     }
 
-     private void EnsureOwner(Patient patient, string email)
-    {
-        if (!string.Equals(patient.Email, email, StringComparison.OrdinalIgnoreCase))
-        {
-            _logger.LogWarning("El usuario {Email} intentó acceder a datos del paciente {PatientId}",
-                email, patient.Id);
-            throw new AuthorizationException();
-        }
-    }
-
     private static AppointmentModel.Response MapToResponse(
         Appointment appointment, AvailabilitySlot slot, Patient patient)
     {
-         return new AppointmentModel.Response(
+        return new AppointmentModel.Response(
             appointment.Id,
             AppointmentStatusMapper.ToApi(appointment.Status),
-            slot.Date,
-            slot.StartTime,
-            slot.EndTime,
-            appointment.Reason,
             new AppointmentModel.PatientResponse(patient.Dni, patient.Name ?? string.Empty),
             new AppointmentModel.DoctorResponse(
                 slot.DoctorId,
@@ -107,11 +91,13 @@ public class AppointmentService : IAppointmentService
                     slot.Doctor?.Speciality?.Name ?? string.Empty)));
     }
 
-    public async Task<IEnumerable<AppointmentModel.Response>> GetByPatient(long dni, string email)    {
+    public async Task<IEnumerable<AppointmentModel.Response>> GetByPatient(long dni, string email)
+    {
         var patient = await _persistence.First<Patient>(p => p.Dni == dni)
             ?? throw new EntityNotFoundException(nameof(Patient));
 
-        EnsureOwner(patient, email);
+        if (!string.Equals(patient.Email, email, StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException("No tiene permisos para ver los turnos de este paciente.");
 
         var appointments = await _persistence.GetFiltered<Appointment>(
             a => a.PatientId == patient.Id && a.Status == AppointmentStatus.Booked,
@@ -129,7 +115,8 @@ public class AppointmentService : IAppointmentService
         var appointment = await _persistence.GetById<Appointment>(id, "AvailabilitySlot", "Patient")
             ?? throw new EntityNotFoundException(nameof(Appointment));
 
-        EnsureOwner(appointment.Patient!, email);
+        if (!string.Equals(appointment.Patient?.Email, email, StringComparison.OrdinalIgnoreCase))
+            throw new UnauthorizedAccessException("No tiene permisos para cancelar este turno.");
 
         if (appointment.Status != AppointmentStatus.Booked)
             throw new ConflictException(nameof(ErrorCodes.APPOINTMENT_NOT_CANCELLABLE),

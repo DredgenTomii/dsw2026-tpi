@@ -20,16 +20,16 @@ public class DoctorController : AppController
     }
 
     [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAll(
-        [FromQuery] int pageSize = 0,
-        [FromQuery] int pageIndex = 1,
-        [FromQuery] string? name = null,
-        [FromQuery] Guid? specialtyId = null)
+        [FromQuery] int pageSize,
+        [FromQuery] int pageIndex,
+        [FromQuery] string? name = null)
     {
-        var doctors = await _service.GetAll(pageSize, pageIndex, name, specialtyId);
+        var doctors = await _service.GetAll(pageSize, pageIndex, name);
         return Ok(doctors);
     }
-    
+
     [HttpPost]
     [Authorize(Policy = Policies.AdminPolicy)]
     [ProducesResponseType(StatusCodes.Status201Created)]
@@ -72,17 +72,13 @@ public class DoctorController : AppController
         var rules = await _availabilityService.GetByDoctor(id);
         return Ok(rules);
     }
-    
+
     [HttpGet("{id:guid}/slots")]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetFreeSlots(
-        Guid id,
-        [FromQuery] DateOnly from,
-        [FromQuery] DateOnly to)
+    public async Task<IActionResult> GetSlots(Guid id, [FromQuery] DateOnly from, [FromQuery] DateOnly to)
     {
-        var slots = await _availabilityService.GetFreeSlots(id, from, to);
+        var slots = await _availabilityService.GetSlots(id, from, to);
         return Ok(slots);
     }
 }

@@ -1,11 +1,12 @@
 ﻿using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 using System.Linq.Expressions;
 
 namespace Dsw2026Tpi.Data;
 
-public class PersistenceEf: IPersistence
+public class PersistenceEf : IPersistence
 {
     private readonly Dsw2026TpiDbContext _context;
 
@@ -51,7 +52,18 @@ public class PersistenceEf: IPersistence
 
     public async Task<T> Update<T>(T entity) where T : EntityBase
     {
-        _context.Update(entity);
+        var tracked = _context.ChangeTracker.Entries<T>()
+            .FirstOrDefault(e => e.Entity.Id == entity.Id);
+
+        if (tracked is not null)
+        {
+            tracked.CurrentValues.SetValues(entity);
+        }
+        else
+        {
+            _context.Update(entity);
+        }
+
         await _context.SaveChangesAsync();
         return entity;
     }
@@ -67,7 +79,7 @@ public class PersistenceEf: IPersistence
 
         var total = await filtered.CountAsync();
 
-        
+
         async Task<Pagination<T>> GetPage(int skip, int take)
         {
             var data = await filtered.Skip(skip)
@@ -76,14 +88,14 @@ public class PersistenceEf: IPersistence
 
             return new Pagination<T>(pageSize, pageIndex, total, data);
         }
-        
-        
+
+
         if (total > pageSize * pageIndex)
         {
             return await GetPage(pageIndex * pageSize, pageSize);
         }
 
-        
+
         if (total < pageSize)
         {
             return new Pagination<T>(pageSize, pageIndex, total, await filtered.ToListAsync());

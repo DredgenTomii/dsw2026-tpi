@@ -38,45 +38,22 @@ public class AvailabilityService : IAvailabilityService
 
         return rules
             .OrderBy(r => r.DayOfWeek)
-            .Select(r => new AvailabilityModel.RuleResponse(r.Id, r.DayOfWeek.ToSpanish(), r.StartTime, r.EndTime));
+            .Select(r => new AvailabilityModel.RuleResponse(r.DayOfWeek.ToSpanish(), r.StartTime, r.EndTime));
     }
 
-    public async Task<IEnumerable<AvailabilityModel.FreeSlotResponse>> GetFreeSlots(
-        Guid doctorId, DateOnly from, DateOnly to)
+    public async Task<IEnumerable<AvailabilityModel.SlotResponse>> GetSlots(Guid doctorId, DateOnly from, DateOnly to)
     {
         _ = await _persistence.GetById<Doctor>(doctorId)
             ?? throw new EntityNotFoundException(nameof(Doctor));
 
-        // 2. Validar las fechas (si están mal, 400)
         if (to < from)
-            throw new ValidationException()
-                .WithDetail(nameof(to), "La fecha final debe ser igual o posterior a la inicial");
+            throw new ValidationException("El rango de fechas es inválido", "AVAILABILITY_INVALID_RANGE");
 
-        if (to.DayNumber - from.DayNumber > 31)
-            throw new ValidationException()
-                .WithDetail(nameof(to), "El rango de fechas no puede superar los 31 días");
-
-        var now = DateTime.Now;
-        var today = DateOnly.FromDateTime(now);
-        var nowTime = TimeOnly.FromDateTime(now);
-        if (from < today) from = today;
-
-        // 4. Traer de la base los slots de ese médico, libres y dentro del rango
         var slots = await _persistence.GetFiltered<AvailabilitySlot>(s =>
-            s.DoctorId == doctorId &&
-            !s.IsBooked &&
-            s.Date >= from &&
-            s.Date <= to) ?? [];
+            s.DoctorId == doctorId && s.Date >= from && s.Date <= to && !s.IsBooked) ?? [];
 
-        return slots
-            .Where(s => s.Date > today || s.StartTime > nowTime)
-            .OrderBy(s => s.Date)
-            .ThenBy(s => s.StartTime)
-            .Select(s => new AvailabilityModel.FreeSlotResponse(s.Id, s.Date, s.StartTime, s.EndTime))
-            .ToList();
+        return slots.OrderBy(s => s.Date).ThenBy(s => s.StartTime).Select(ToSlotResponse);
     }
-
-
 
     private async Task<AvailabilityModel.Response> GenerateMonth(AvailabilityModel.Request request, bool isOverwrite)
     {
@@ -144,11 +121,6 @@ public class AvailabilityService : IAvailabilityService
             createdSlots.OrderBy(s => s.Date).ThenBy(s => s.StartTime).Select(ToSlotResponse));
     }
 
-    /// <summary>
-    /// Si ya hay reglas cargadas para ese médico/mes: en POST es conflicto (usar PUT),
-    /// en PUT se borran las reglas/slots NO reservados (cascada) y se devuelven los
-    /// slots reservados para no duplicarlos al regenerar.
-    /// </summary>
     private async Task<List<AvailabilitySlot>> HandleExistingMonth(Guid doctorId, int year, int month, bool isOverwrite)
     {
         var existingRules = (await _persistence.GetFiltered<AvailabilityRule>(r =>
@@ -179,7 +151,6 @@ public class AvailabilityService : IAvailabilityService
         {
             if (!bookedRuleIds.Contains(rule.Id))
             {
-                // OnDelete(Cascade) en AvailabilitySlotConfiguration borra los slots asociados.
                 await _persistence.Delete(rule);
             }
         }
@@ -211,7 +182,6 @@ public class AvailabilityService : IAvailabilityService
         }
     }
 
-    /// <summary>RN02: cada franja declarada debe poder dividirse en bloques exactos de 30 min.</summary>
     private static void ValidateBlocksOf30(List<(DayOfWeek DayOfWeek, TimeOnly StartTime, TimeOnly EndTime)> rules)
     {
         foreach (var rule in rules)
@@ -229,7 +199,6 @@ public class AvailabilityService : IAvailabilityService
         }
     }
 
-    /// <summary>RN01: el médico no puede tener dos franjas que se solapen el mismo día.</summary>
     private static void ValidateNoOverlaps(List<(DayOfWeek DayOfWeek, TimeOnly StartTime, TimeOnly EndTime)> rules)
     {
         foreach (var group in rules.GroupBy(r => r.DayOfWeek))
