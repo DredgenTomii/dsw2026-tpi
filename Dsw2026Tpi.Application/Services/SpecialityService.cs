@@ -56,6 +56,11 @@ public class SpecialityService : ISpecialityService
         var speciality = await _persistence.GetById<Speciality>(id)
             ?? throw new EntityNotFoundException(nameof(Speciality));
 
+        var activeDoctor = await _persistence.First<Doctor>(d => d.SpecialityId == id);
+        if (activeDoctor is not null)
+            throw new ConflictException("SPECIALITY_HAS_DOCTORS",
+                "La especialidad tiene médicos activos. Elimine o cambie de especialidad a esos médicos primero.");
+
         speciality.Delete();
         await _persistence.Update(speciality);
     }

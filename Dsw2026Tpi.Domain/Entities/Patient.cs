@@ -20,4 +20,10 @@ public class Patient : EntityBase
         Name = name;
         Phone = telefono;
     }
+
+    public void UpdateName(string name)
+    {
+        Name = name;
+        UpdatedAt = DateTime.UtcNow;
+    }
 }

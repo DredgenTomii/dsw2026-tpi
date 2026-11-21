@@ -1,5 +1,4 @@
 using Dsw2026Tpi.Api.Configurations;
-using Dsw2026Tpi.Api.Json;
 using Dsw2026Tpi.Api.Middlewares;
 using Dsw2026Tpi.CrossCutting.Identity; 
 using Dsw2026Tpi.Data.Identity;       
@@ -31,11 +30,7 @@ public class Program
             builder.Services.AddApplicationPersistence(builder.Configuration);
             builder.Services.AddAppCors(builder.Configuration);
             builder.Services.AddAppDependencies();
-            builder.Services.AddControllers()
-                .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.Converters.Add(new TimeOnlyJsonConverter());
-                });
+            builder.Services.AddControllers();
             builder.Services.AddHealthChecks();
             builder.Services.AddAppRateLimiting(builder.Configuration); 
 

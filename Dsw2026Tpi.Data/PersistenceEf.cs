@@ -1,12 +1,11 @@
 ﻿using Dsw2026Tpi.Domain.Entities;
 using Dsw2026Tpi.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
 using System.Linq.Expressions;
 
 namespace Dsw2026Tpi.Data;
 
-public class PersistenceEf : IPersistence
+public class PersistenceEf: IPersistence
 {
     private readonly Dsw2026TpiDbContext _context;
 
@@ -52,34 +51,38 @@ public class PersistenceEf : IPersistence
 
     public async Task<T> Update<T>(T entity) where T : EntityBase
     {
-        var tracked = _context.ChangeTracker.Entries<T>()
-            .FirstOrDefault(e => e.Entity.Id == entity.Id);
-
-        if (tracked is not null)
-        {
-            tracked.CurrentValues.SetValues(entity);
-        }
-        else
-        {
-            _context.Update(entity);
-        }
-
+        _context.Update(entity);
         await _context.SaveChangesAsync();
         return entity;
     }
 
-    public async Task<Pagination<T>> Paginate<T, TKey>(int pageSize, int pageIndex, Expression<Func<T, bool>> predicate, Expression<Func<T, TKey>> sortOrder, params string[] includes) where T : EntityBase
+    public async Task<IEnumerable<T>?> GetFilteredIncludingDeleted<T>(Expression<Func<T, bool>> predicate, params string[] include) where T : EntityBase
+    {
+        return await Include(_context.Set<T>().IgnoreQueryFilters(), include).Where(predicate).ToListAsync();
+    }
+
+    public Task<Pagination<T>> Paginate<T, TKey>(int pageSize, int pageIndex, Expression<Func<T, bool>> predicate, Expression<Func<T, TKey>> sortOrder, params string[] includes) where T : EntityBase
+    {
+        return PaginateQuery(_context.Set<T>(), pageSize, pageIndex, predicate, sortOrder, includes);
+    }
+
+    public Task<Pagination<T>> PaginateIncludingDeleted<T, TKey>(int pageSize, int pageIndex, Expression<Func<T, bool>> predicate, Expression<Func<T, TKey>> sortOrder, params string[] includes) where T : EntityBase
+    {
+        return PaginateQuery(_context.Set<T>().IgnoreQueryFilters(), pageSize, pageIndex, predicate, sortOrder, includes);
+    }
+
+    private static async Task<Pagination<T>> PaginateQuery<T, TKey>(IQueryable<T> source, int pageSize, int pageIndex, Expression<Func<T, bool>> predicate, Expression<Func<T, TKey>> sortOrder, string[] includes) where T : EntityBase
     {
         pageSize = Math.Abs(pageSize);
         pageIndex = Math.Abs(pageIndex) == 0 ? 0 : Math.Abs(pageIndex) - 1;
 
-        var filtered = Include(_context.Set<T>(), includes)
+        var filtered = Include(source, includes)
                  .Where(predicate)
                  .OrderBy(sortOrder);
 
         var total = await filtered.CountAsync();
 
-
+        
         async Task<Pagination<T>> GetPage(int skip, int take)
         {
             var data = await filtered.Skip(skip)
@@ -88,14 +91,14 @@ public class PersistenceEf : IPersistence
 
             return new Pagination<T>(pageSize, pageIndex, total, data);
         }
-
-
+        
+        
         if (total > pageSize * pageIndex)
         {
             return await GetPage(pageIndex * pageSize, pageSize);
         }
 
-
+        
         if (total < pageSize)
         {
             return new Pagination<T>(pageSize, pageIndex, total, await filtered.ToListAsync());
